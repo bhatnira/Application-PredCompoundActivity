@@ -3,6 +3,8 @@ services:
     name: compound-activity-prediction
     env: docker
     plan: starter
+    # Root directory (empty means repository root)
+    rootDir: .
     # Auto-deploy from your repo
     autoDeploy: false
     # Health check path
