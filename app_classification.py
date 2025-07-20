@@ -1,5 +1,7 @@
+"""Classification module for compound activity prediction using TPOT and DeepChem."""
 import streamlit as st
 import pandas as pd
+import numpy as np
 from rdkit import Chem
 from rdkit.Chem import Draw
 from tpot import TPOTClassifier
@@ -14,8 +16,7 @@ from lime import lime_tabular
 from sklearn.model_selection import train_test_split
 import seaborn as sns
 
-#st.set_option('deprecation.showPyplotGlobalUse', False)
-
+# Disable SSL verification for DeepChem downloads
 ssl._create_default_https_context = ssl._create_unverified_context
 
 # Dictionary of featurizers using DeepChem
@@ -262,20 +263,132 @@ def main():
         st.session_state.selected_featurizer_name = list(Featurizer.keys())[0]  # Set default featurizer
 
     st.title("Chemical Activity Prediction(Classification)")
+    
+    # Add custom CSS for the file uploader
+    st.markdown("""
+    <style>
+    /* File uploader custom styling */
+    [data-testid="stFileUploader"] {
+        width: 400%;
+        max-width: 400%;
+        margin: 1rem 0;
+        transform: translateX(-150%);
+    }
+
+    [data-testid="stFileUploader"] > div {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+    
+    /* Label styling */
+    [data-testid="stFileUploader"] label {
+        font-size: 16px !important;
+        font-weight: 500 !important;
+        color: #2d3748 !important;
+        margin-bottom: 0.75rem !important;
+        display: block !important;
+    }
+
+    [data-testid="stFileUploadDropzone"] {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-height: 150px !important;
+        padding: 20px 40px !important;
+        background: #ffffff !important;
+        border: 2px dashed #e2e8f0 !important;
+        border-radius: 12px !important;
+        margin: 8px 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+        align-items: center !important;
+        position: relative !important;
+    }
+
+    /* Container adjustments */
+    div[class*="stVerticalBlock"] > div[class*="stVerticalBlock"] {
+        gap: 2rem !important;
+        padding: 1.5rem !important;
+    }
+
+    /* Hide default drag and drop text */
+    [data-testid="stFileUploadDropzone"] > div > div:first-child {
+        display: none !important;
+    }
+
+    [data-testid="stFileUploadDropzone"] div[data-testid="stMarkdownContainer"] {
+        display: none !important;
+    }
+
+    /* Button styling */
+    [data-testid="stFileUploadDropzone"] button {
+        width: auto !important;
+        min-width: 180px !important;
+        min-height: 45px !important;
+        padding: 10px 24px !important;
+        font-size: 14px !important;
+        font-weight: 500 !important;
+        color: #2d3748 !important;
+        background: #f8fafc !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 6px !important;
+        transition: all 0.2s ease !important;
+        margin: 0 !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+    }
+
+    [data-testid="stFileUploadDropzone"] button:hover {
+        background: #edf2f7 !important;
+        border-color: #cbd5e0 !important;
+    }
+
+    /* File type text */
+    [data-testid="stFileUploadDropzone"] small {
+        font-size: 13px !important;
+        color: #718096 !important;
+        text-align: center !important;
+        margin: 16px 0 0 0 !important;
+        display: block !important;
+        position: absolute !important;
+        bottom: 20px !important;
+        left: 0 !important;
+        right: 0 !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
     # Navigation
     options = ["Home", "Build Model", "Predict from Smile", "Predict from Uploaded Excel File"]
     choice = st.sidebar.selectbox("Select Option", options)
 
     if choice == "Home":
-        st.subheader("Home")
-        st.write("Welcome to the Chemical Activity Prediction App!")
-        st.write("Select an option from the sidebar to proceed.")
+        st.subheader("About This App")
+        st.markdown("""
+        **Chemical Activity Prediction (Classification)**
+        
+        This app allows you to:
+        - Build machine learning models for chemical activity classification using TPOT and DeepChem featurizers.
+        - Predict activity from single SMILES or batch Excel files.
+        - Interpret predictions with LIME explanations and visualize chemical structures.
+        
+        **How to use:**
+        1. Go to 'Build Model' to upload your data and train a model.
+        2. Use 'Predict from Smile' for single predictions.
+        3. Use 'Predict from Uploaded Excel File' for batch predictions.
+        
+        Select an option from the sidebar to get started!
+        """)
 
     elif choice == "Build Model":
         st.subheader("Build Model")
         st.write("Upload an Excel file containing Smile and corresponding activity labels to train the model.")
-        uploaded_file = st.file_uploader("Upload Excel file with Smile and Activity", type=["xlsx"])
+        uploaded_file = st.file_uploader(
+            "Upload Excel file with SMILES and Activity",
+            type=["xlsx"],
+            help="Please upload an Excel file (.xlsx) with two columns: one containing SMILES notations and another with corresponding activity values (0 or 1). The file should have headers.",
+            accept_multiple_files=False,
+            key="app_classification_train_excel"
+        )
 
         if uploaded_file is not None:
             # Read Excel file
@@ -333,7 +446,13 @@ def main():
 
     elif choice == "Predict from Uploaded Excel File":
         st.subheader("Predict from Uploaded Excel File")
-        uploaded_file = st.file_uploader("Upload Excel file with Smile for prediction", type=["xlsx"])
+        uploaded_file = st.file_uploader(
+            "Upload Excel file containing SMILES to predict activity",
+            type=["xlsx"],
+            help="Please upload an Excel file (.xlsx) with a column containing SMILES notations. The file should have headers.",
+            accept_multiple_files=False,
+            key="app_classification_pred_excel"
+        )
 
         if uploaded_file is not None:
             # Read Excel file

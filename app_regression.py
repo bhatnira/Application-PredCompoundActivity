@@ -1,5 +1,7 @@
+"""Regression module for compound activity prediction using TPOT and DeepChem."""
 import streamlit as st
 import pandas as pd
+import numpy as np
 from rdkit import Chem, RDLogger
 from rdkit.Chem import Draw
 from tpot import TPOTRegressor
@@ -12,8 +14,8 @@ import ssl
 from lime import lime_tabular
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
-import numpy as np
 
+# Disable SSL verification for DeepChem downloads
 ssl._create_default_https_context = ssl._create_unverified_context
 
 # Disable RDKit warnings
@@ -241,14 +243,27 @@ def main():
     choice = st.sidebar.selectbox("Choose a task", options)
 
     if choice == "Home":
-        st.subheader("Home")
-        st.write("Welcome to the Chemical Activity Prediction App!")
-        st.write("Select an option from the sidebar to proceed.")
+        st.subheader("About This App")
+        st.markdown("""
+        **Chemical Activity Prediction (Regression)**
+        
+        This app allows you to:
+        - Build regression models for chemical activity prediction using TPOT and DeepChem featurizers.
+        - Predict activity values from single SMILES or batch Excel files.
+        - Visualize model performance and interpret results.
+        
+        **How to use:**
+        1. Go to 'Build Model' to upload your data and train a regression model.
+        2. Use 'Predict from Smile' for single predictions.
+        3. Use 'Predict from Uploaded Excel File' for batch predictions.
+        
+        Select an option from the sidebar to get started!
+        """)
 
     elif choice == "Build Model":
         st.subheader("Build Model")
         st.write("Upload an Excel file containing Smile and corresponding activity values to train the model.")
-        uploaded_file = st.file_uploader("Upload Excel file with Smile and Activity", type=["xlsx"])
+        uploaded_file = st.file_uploader("Upload Excel file with Smile and Activity", type=["xlsx"], key="app_regression_train_excel")
 
         if uploaded_file is not None:
             # Read Excel file
@@ -308,7 +323,7 @@ def main():
 
     elif choice == "Predict from Excel":
         st.subheader("Predict from Excel")
-        uploaded_pred_file = st.file_uploader("Upload Excel file with Smile for prediction", type=["xlsx"])
+        uploaded_pred_file = st.file_uploader("Upload Excel file with Smile for prediction", type=["xlsx"], key="app_regression_pred_excel")
 
         if uploaded_pred_file is not None:
             # Read Excel file for prediction

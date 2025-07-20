@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: compound-activity-prediction
+    env: docker
+    plan: starter
+    # Auto-deploy from your repo
+    autoDeploy: false
+    # Health check path
+    healthCheckPath: /_stcore/health
+    # Environment variables
+    envVars:
+      - key: STREAMLIT_SERVER_PORT
+        value: 8080
+      - key: STREAMLIT_SERVER_ADDRESS
+        value: 0.0.0.0
+      - key: STREAMLIT_SERVER_HEADLESS
+        value: true
+      - key: STREAMLIT_BROWSER_GATHER_USAGE_STATS
+        value: false
+      - key: PYTHONUNBUFFERED
+        value: 1

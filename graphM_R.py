@@ -1,5 +1,7 @@
+"""GraphConvNet Model Regression module for compound activity prediction."""
 import streamlit as st
 import pandas as pd
+import numpy as np
 import deepchem as dc
 from deepchem.feat import ConvMolFeaturizer
 from deepchem.models import GraphConvModel
@@ -8,10 +10,9 @@ from sklearn.metrics import mean_squared_error, r2_score
 import os
 import shutil
 import zipfile
-import numpy as np
 import matplotlib.pyplot as plt
 
-# Define the ConvMolFeaturizer
+# Initialize featurizer
 featurizer = ConvMolFeaturizer()
 
 # Function to train the model
@@ -97,100 +98,105 @@ def plot_true_vs_pred(y_true, y_pred):
     st.pyplot(plt)
 
 
-# Streamlit UI
-st.title('Graph Convolutional Network(Regression) Modeling for Compound Acitivity Prediction')
 
-# Sidebar inputs
-st.sidebar.header('Model Configuration')
-uploaded_file = st.sidebar.file_uploader("Upload an Excel file for training", type="xlsx")
+def main():
+    st.title('Graph Convolutional Network(Regression) Modeling for Compound Acitivity Prediction')
 
-if uploaded_file is not None:
-    # Load dataset
-    df = pd.read_excel(uploaded_file)
-    st.write("Uploaded DataFrame:")
-    st.write(df.head())
+    # Sidebar inputs
+    st.sidebar.header('Model Configuration')
+    uploaded_file = st.sidebar.file_uploader("Upload an Excel file for training", type="xlsx", key="graphM_R_train_excel")
 
-    columns = df.columns.tolist()
-    smiles_column = st.sidebar.selectbox("Select the Smile column", columns)
-    label_column = st.sidebar.selectbox("Select the continuous label column", columns)
+    if uploaded_file is not None:
+        # Load dataset
+        df = pd.read_excel(uploaded_file)
+        st.write("Uploaded DataFrame:")
+        st.write(df.head())
 
-    # Input fields for batch size, dropout rate, and number of epochs
-    batch_size = st.sidebar.text_input("Enter batch size", "256")
-    dropout = st.sidebar.text_input("Enter dropout rate", "0.1")
-    nb_epoch = st.sidebar.text_input("Enter number of epochs", "120")
+        columns = df.columns.tolist()
+        smiles_column = st.sidebar.selectbox("Select the Smile column", columns)
+        label_column = st.sidebar.selectbox("Select the continuous label column", columns)
 
-    # Input for graph convolution layers
-    graph_conv_layers = st.sidebar.text_input("Enter graph convolution layers (comma-separated)", "64,64")
+        # Input fields for batch size, dropout rate, and number of epochs
+        batch_size = st.sidebar.text_input("Enter batch size", "256")
+        dropout = st.sidebar.text_input("Enter dropout rate", "0.1")
+        nb_epoch = st.sidebar.text_input("Enter number of epochs", "120")
 
-    # Input fields for test size and validation size
-    test_size = st.sidebar.text_input("Enter test size (fraction)", "0.15")
-    valid_size = st.sidebar.text_input("Enter validation size (fraction)", "0.15")
+        # Input for graph convolution layers
+        graph_conv_layers = st.sidebar.text_input("Enter graph convolution layers (comma-separated)", "64,64")
 
-    progress_bar = st.sidebar.progress(0)
+        # Input fields for test size and validation size
+        test_size = st.sidebar.text_input("Enter test size (fraction)", "0.15")
+        valid_size = st.sidebar.text_input("Enter validation size (fraction)", "0.15")
 
-    if st.sidebar.button("Train Model"):
-        if smiles_column and label_column:
-            st.write("Training the model...")
-            model_dir = "./trained_model"
-            if os.path.exists(model_dir):
-                shutil.rmtree(model_dir)
-            os.makedirs(model_dir)
+        progress_bar = st.sidebar.progress(0)
 
-            # Convert input values to appropriate types
-            batch_size = int(batch_size)
-            dropout = float(dropout)
-            nb_epoch = int(nb_epoch)
-            test_size = float(test_size)
-            valid_size = float(valid_size)
+        if st.sidebar.button("Train Model"):
+            if smiles_column and label_column:
+                st.write("Training the model...")
+                model_dir = "./trained_model"
+                if os.path.exists(model_dir):
+                    shutil.rmtree(model_dir)
+                os.makedirs(model_dir)
 
-            # Convert graph_conv_layers to list of integers
-            graph_conv_layers = [int(layer) for layer in graph_conv_layers.split(',')]
+                # Convert input values to appropriate types
+                batch_size = int(batch_size)
+                dropout = float(dropout)
+                nb_epoch = int(nb_epoch)
+                test_size = float(test_size)
+                valid_size = float(valid_size)
 
-            model, test_dataset, training_history = train_model(
-                df, smiles_column, label_column, model_dir, 
-                batch_size, dropout, nb_epoch, graph_conv_layers, test_size, valid_size, progress_bar
-            )
+                # Convert graph_conv_layers to list of integers
+                graph_conv_layers = [int(layer) for layer in graph_conv_layers.split(',')]
 
-            if model is not None:
-                st.success("Model training completed.")
+                model, test_dataset, training_history = train_model(
+                    df, smiles_column, label_column, model_dir, 
+                    batch_size, dropout, nb_epoch, graph_conv_layers, test_size, valid_size, progress_bar
+                )
 
-                # Evaluate the model
-                if test_dataset is not None:
-                    # Evaluate on test dataset
-                    y_true = np.array(test_dataset.y).ravel()
-                    y_pred = model.predict(test_dataset).ravel()
+                if model is not None:
+                    st.success("Model training completed.")
 
-                    # Compute metrics
-                    mse = mean_squared_error(y_true, y_pred)
-                    r2 = r2_score(y_true, y_pred)
-                    
-                    # Display metrics
-                    st.write("Test Mean Squared Error:", mse)
-                    st.write("Test R² Score:", r2)
+                    # Evaluate the model
+                    if test_dataset is not None:
+                        # Evaluate on test dataset
+                        y_true = np.array(test_dataset.y).ravel()
+                        y_pred = model.predict(test_dataset).ravel()
 
-                    # Plot training history
-                    st.write("Training History:")
-                    plot_training_history(training_history)
+                        # Compute metrics
+                        mse = mean_squared_error(y_true, y_pred)
+                        r2 = r2_score(y_true, y_pred)
+                        
+                        # Display metrics
+                        st.write("Test Mean Squared Error:", mse)
+                        st.write("Test R² Score:", r2)
 
-                    st.write("True vs Predicted Values:")
-                    plot_true_vs_pred(y_true, y_pred)
+                        # Plot training history
+                        st.write("Training History:")
+                        plot_training_history(training_history)
 
-                    # Provide download link for the trained model
-                    zipf = zipfile.ZipFile('trained_model.zip', 'w', zipfile.ZIP_DEFLATED)
-                    zipdir(model_dir, zipf)
-                    zipf.close()
+                        st.write("True vs Predicted Values:")
+                        plot_true_vs_pred(y_true, y_pred)
 
-                    with open('trained_model.zip', 'rb') as f:
-                        st.download_button(
-                            label="Download Trained Model",
-                            data=f,
-                            file_name='trained_model.zip',
-                            mime='application/zip'
-                        )
+                        # Provide download link for the trained model
+                        zipf = zipfile.ZipFile('trained_model.zip', 'w', zipfile.ZIP_DEFLATED)
+                        zipdir(model_dir, zipf)
+                        zipf.close()
 
+                        with open('trained_model.zip', 'rb') as f:
+                            st.download_button(
+                                label="Download Trained Model",
+                                data=f,
+                                file_name='trained_model.zip',
+                                mime='application/zip'
+                            )
+
+                    else:
+                        st.error("Test dataset is empty. Training may have failed.")
                 else:
-                    st.error("Test dataset is empty. Training may have failed.")
+                    st.error("Model training failed. Please check your data and try again.")
             else:
-                st.error("Model training failed. Please check your data and try again.")
-        else:
-            st.error("Please select both the Smile and continuous label columns.")
+                st.error("Please select both the Smile and continuous label columns.")
+
+
+if __name__ == "__main__":
+    main()
